@@ -1,0 +1,24 @@
+# 真实知识库：忽略内容，但保留 examples 模板
+data/knowledge/*
+!data/knowledge/examples/
+!data/knowledge/examples/*.example.md
+!data/knowledge/examples/manifest.example.csv
+
+# 测试数据与本地文件
+tests/fixtures/real/
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.log
+knowledge_base.json
+e2e_test_report*
+*_test_results.json
+
+# Python 常规产物
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/

@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: ${DB_USER:-counselor}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?请在 .env 里设置 DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-counselor_bot}
+    ports:
+      # 只监听本机，不暴露公网
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-counselor} -d ${DB_NAME:-counselor_bot}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  app:
+    build: .
+    env_file:
+      - .env
+    environment:
+      # 容器内要连服务名，不是 .env 里的 localhost
+      DB_HOST: postgres
+      DB_PORT: "5432"
+    extra_hosts:
+      # 让容器能访问宿主机上的 Ollama 等本地服务（Linux 需要显式映射）
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

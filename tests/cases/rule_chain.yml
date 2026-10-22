@@ -1,0 +1,44 @@
+# 规则链用例表：新增分支必须在这里写期望 path，并由 tests/test_rule_chain.py 驱动执行。
+#
+# stub 字段用于替代真实的意图归一化与检索结果：
+#   emotion / section：意图归一化返回
+#   kb_top：知识库 top1 相似度（null 表示无结果）
+#   notice_top：通知 top1 相似度（null 表示无结果）
+#
+# 阈值取自 .env：RETRIEVAL_MIN_SCORE、NOTICE_RETRIEVAL_MIN_SCORE、NOTICE_SOFT_SCORE=0.30。
+cases:
+  - name: crisis_always_first
+    question: "我不想活了，想自杀"
+    expected: crisis
+    llm_allowed: false
+    stub: { emotion: normal, section: null, kb_top: 0.99, notice_top: 0.99 }
+
+  - name: normal_with_knowledge_hit
+    question: "宿舍能用电磁炉吗"
+    expected: normal
+    stub: { emotion: normal, section: 宿舍管理, kb_top: 0.60, notice_top: null }
+
+  - name: notice_beats_empty_section
+    question: "心理健康宣传周活动的通知什么时候发的"
+    expected: notice
+    stub: { emotion: normal, section: 心理健康, kb_top: null, notice_top: 0.70 }
+
+  - name: empty_section_when_board_has_no_clauses
+    question: "三方协议怎么签"
+    expected: empty_section
+    stub: { emotion: normal, section: 就业毕业, kb_top: null, notice_top: null }
+
+  - name: low_relevance_when_below_threshold
+    question: "食堂几点开门"
+    expected: low_relevance
+    stub: { emotion: normal, section: null, kb_top: 0.30, notice_top: null }
+
+  - name: venting_is_comfort_only
+    question: "最近真的好累"
+    expected: negative_emotion_venting
+    stub: { emotion: venting, section: null, kb_top: null, notice_top: null }
+
+  - name: consult_is_comfort_when_no_basis
+    question: "最近压力好大，睡不着"
+    expected: negative_emotion
+    stub: { emotion: consult, section: null, kb_top: null, notice_top: null }

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>辅导员问答 · 管理后台</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, "Microsoft YaHei", sans-serif; margin: 0; padding: 16px; line-height: 1.5; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  h2 { font-size: 15px; margin: 20px 0 8px; }
+  .cards { display: flex; flex-wrap: wrap; gap: 12px; }
+  .card { border: 1px solid #8884; border-radius: 8px; padding: 10px 14px; min-width: 120px; }
+  .card .n { font-size: 22px; font-weight: 600; }
+  .card .k { font-size: 12px; opacity: .7; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin: 12px 0; }
+  label { display: flex; flex-direction: column; font-size: 12px; opacity: .8; }
+  input, select, button { font: inherit; padding: 4px 6px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { border-bottom: 1px solid #8884; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { white-space: nowrap; }
+  td.q { max-width: 320px; }
+  .risk { color: #b00; font-weight: 600; }
+  .muted { opacity: .65; }
+  .bar { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  code { background: #8882; padding: 1px 4px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>辅导员问答 · 管理后台</h1>
+<p class="muted">只读视图：日志与统计。没有编辑、删除入口；导出或截图需审批。openid 已掩码。</p>
+
+<h2>统计</h2>
+<div class="cards" id="cards"></div>
+<div id="daily"></div>
+<div id="paths"></div>
+
+<h2>日志</h2>
+<form id="filters">
+  <label>起始日期<input type="date" name="startDate"></label>
+  <label>结束日期<input type="date" name="endDate"></label>
+  <label>path<input name="path" placeholder="normal / crisis …"></label>
+  <label>emotion<input name="emotion" placeholder="normal / venting …"></label>
+  <label>关键词<input name="keyword" placeholder="搜索学生原话"></label>
+  <label>每页<input type="number" name="size" value="20" min="1" max="100" style="width:70px"></label>
+  <button type="submit">查询</button>
+  <button type="button" id="reset">重置</button>
+</form>
+
+<table>
+  <thead>
+    <tr>
+      <th>时间(UTC)</th><th>path</th><th>情绪</th><th>意图</th><th>相似度</th>
+      <th>高危</th><th>敏感词</th><th>openid</th><th>学生提问</th><th>回答</th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
+<div class="bar">
+  <button id="prev" type="button">上一页</button>
+  <span id="pageinfo" class="muted"></span>
+  <button id="next" type="button">下一页</button>
+  <span id="error" class="risk"></span>
+</div>
+
+<script>
+const state = { page: 0, size: 20 };
+
+async function api(path, options) {
+  const res = await fetch(path, options);
+  if (res.status === 401) throw new Error('认证失败：刷新页面重新输入账号密码');
+  if (!res.ok) throw new Error(`请求失败：${res.status}`);
+  return res.json();
+}
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function renderCards(stats) {
+  const items = [
+    ['总问答数', stats.total],
+    ['拒答率', (stats.rejectionRate * 100).toFixed(2) + '%'],
+    ['近期危机', stats.recentCrisis.length],
+    ['近期情绪', stats.recentVenting.length],
+  ];
+  document.getElementById('cards').innerHTML = items
+    .map(([k, n]) => `<div class="card"><div class="n">${esc(n)}</div><div class="k">${esc(k)}</div></div>`)
+    .join('');
+
+  document.getElementById('daily').innerHTML = '<h2>近 7 天</h2><div class="muted">' +
+    (stats.daily.length ? stats.daily.map(d => `${esc(d.day)}：${esc(d.count)}`).join('　') : '暂无数据') +
+    '</div>';
+  document.getElementById('paths').innerHTML = '<h2>path 分布</h2><div class="muted">' +
+    (stats.pathDistribution.length
+      ? stats.pathDistribution.map(p => `<code>${esc(p.path)}</code> ${esc(p.count)}`).join('　')
+      : '暂无数据') + '</div>';
+}
+
+function renderRows(page) {
+  document.getElementById('rows').innerHTML = page.content.map(r => `
+    <tr>
+      <td>${esc((r.createdAt || '').replace('T', ' ').slice(0, 19))}</td>
+      <td>${esc(r.path)}</td>
+      <td>${esc(r.emotion || '')}</td>
+      <td>${esc(r.intent || '')}</td>
+      <td>${r.topSimilarity == null ? '' : esc(r.topSimilarity.toFixed(4))}</td>
+      <td>${r.isHighRisk ? '<span class="risk">是</span>' : ''}</td>
+      <td>${esc((r.sensitiveWordsHit || []).join('、'))}</td>
+      <td>${esc(r.openidMasked || '')}</td>
+      <td class="q">${esc(r.question)}</td>
+      <td class="q">${esc(r.generatedAnswer || '')}</td>
+    </tr>`).join('') || '<tr><td colspan="10" class="muted">没有符合条件的记录</td></tr>';
+
+  document.getElementById('pageinfo').textContent =
+    `第 ${page.number + 1} / ${Math.max(page.totalPages, 1)} 页，共 ${page.totalElements} 条`;
+  document.getElementById('prev').disabled = page.number <= 0;
+  document.getElementById('next').disabled = page.number + 1 >= page.totalPages;
+}
+
+async function loadLogs() {
+  const form = new FormData(document.getElementById('filters'));
+  const params = new URLSearchParams();
+  for (const [k, v] of form.entries()) if (v !== '') params.set(k, v);
+  params.set('page', state.page);
+  const page = await api('/admin/api/logs?' + params.toString());
+  state.size = page.size;
+  renderRows(page);
+}
+
+document.getElementById('filters').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  state.page = 0;
+  try { await loadLogs(); } catch (e) { document.getElementById('error').textContent = e.message; }
+});
+document.getElementById('reset').addEventListener('click', () => {
+  document.getElementById('filters').reset();
+  state.page = 0;
+  loadLogs().catch(e => { document.getElementById('error').textContent = e.message; });
+});
+document.getElementById('prev').addEventListener('click', () => {
+  state.page = Math.max(state.page - 1, 0);
+  loadLogs().catch(e => { document.getElementById('error').textContent = e.message; });
+});
+document.getElementById('next').addEventListener('click', () => {
+  state.page += 1;
+  loadLogs().catch(e => { document.getElementById('error').textContent = e.message; });
+});
+
+(async () => {
+  try {
+    renderCards(await api('/admin/api/stats'));
+    await loadLogs();
+  } catch (e) {
+    document.getElementById('error').textContent = e.message;
+  }
+})();
+</script>
+</body>
+</html>

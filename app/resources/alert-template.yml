@@ -1,0 +1,16 @@
+# 危机告警文案（钉钉）。用 str.replace 渲染，不要用 str.format。
+# 占位符：{test_marker}、{alert_time}、{openid}、{path}、{keyword}、{question_excerpt}
+#
+# 注意：这里会发到授权群，属于个人信息处理范围。
+# - openid 是必须的（要据此找人），但学生原话只放截断片段，完整内容留在 qa_log；
+# - 不要在文案里写死任何联系方式或热线。
+title: 危机告警
+content: |-
+  ### 危机告警{test_marker}
+  - 时间：{alert_time}（UTC）
+  - openid：{openid}
+  - 路由：{path}
+  - 命中关键词：{keyword}
+  - 学生原话（截断）：{question_excerpt}
+
+  请尽快联系学生或辅导员核实；完整记录见管理后台 qa_log。

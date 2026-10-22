@@ -1,0 +1,48 @@
+# 应急场景：emotion=emergency 且问题命中场景关键词时，走该场景固定话术（path=emergency）；
+# 未命中任何场景时走 fixed-replies.yml 的 generic_emergency（path=generic_emergency）。
+#
+# ⚠️ 话术里不要写具体热线/电话：AGENTS 禁止编造联系方式与热线。
+#    学校提供的号码请放进 fixed-replies.yml 的 {counselor_contact} 环境变量。
+scenarios:
+  - name: 人身安全
+    keywords:
+      - 被打
+      - 被威胁
+      - 跟踪我
+      - 不敢回宿舍
+      - 有人堵我
+    reply: |-
+      你现在的人身安全最重要。请先离开让你不安全的场所，去有人的地方或找信任的同学、老师陪同。
+      这件事需要立刻让真人介入，请马上联系辅导员{contact_suffix}；如果情况紧急，请直接拨打当地报警电话。
+
+  - name: 突发身体不适
+    keywords:
+      - 晕倒
+      - 抽搐
+      - 呼吸困难
+      - 大出血
+      - 疼得受不了
+    reply: |-
+      这属于需要立即就医的情况。请马上联系校医院或拨打当地急救电话，并让身边的同学陪同。
+      事后请告知辅导员{contact_suffix}，以便安排请假与后续照顾。
+
+  - name: 被诈骗或财物损失
+    keywords:
+      - 被骗
+      - 诈骗
+      - 转错钱
+      - 银行卡被扣
+      - 网贷
+    reply: |-
+      先把卡冻结或改密，避免继续损失；不要按对方要求继续转账或提供验证码。
+      请尽快联系辅导员{contact_suffix}，需要时由老师陪同报警。
+
+  - name: 失联或走失
+    keywords:
+      - 联系不上
+      - 失联
+      - 找不到人
+      - 一直不回消息
+    reply: |-
+      请先确认最后一次联系的时间和地点，并联系其室友、同班同学。
+      如果仍无法确认人身安全，请立即联系辅导员{contact_suffix}，由老师按学校流程处理。

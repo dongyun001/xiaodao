@@ -26,7 +26,7 @@
 - **规则链严格按序执行，命中即返回，不得跳步；危机关键词永远最先判断，且该分支不得调用 LLM。** 完整顺序、通知分支条件与 `path` 枚举见 `docs/接口契约.md`；危机判断不得交给模型。
 - 每个分支返回统一 `QaResult`，不在分支里拼 HTTP 响应；异常在边界捕获并降级为稳定话术。
 - 响应字段必须 camelCase（`docTitle`、`topSimilarity`、`generatedAnswer`、`createdAt`、`alertSent`）；Pydantic v2 用 `alias_generator=to_camel`、`populate_by_name=True`；改字段先改契约文档和前端，再改后端。
-- 知识库按“条”切分，一条记录只含一条条款；条的位置按标题文本（`第X章`/`第X节`/`第X条`）识别，**不限定 `##` 或 `###`**。`id` 稳定 upsert；空正文、无法确定 `article_num`、元数据缺失直接报错，不静默跳过。规则见 `README.md`「知识库准备」；标题约定在 `README.md`、`docs/踩坑记录.md`、`开发步骤提示词.md` 三处必须一致。
+- 知识库按“条”切分，一条记录只含一条条款；编写约定固定为 `#`=章、`##`=节、`###`=条，条号独立成标题行、编号用中文数字；解析器按标题文本识别、不强制校验层级，但入库数据必须按此约定编写（见 `docs/学生手册-Markdown编写规范.md`，其中第 7 节为入库附加要求）。`id` 稳定 upsert；空正文、无法确定 `article_num`、元数据缺失直接报错，不静默跳过。规则见 `README.md`「知识库准备」；标题约定在 `README.md`、`docs/踩坑记录.md`、`开发步骤提示词.md` 三处必须一致。
 - 向量维度、embedding 模型与 `vector(N)` 必须一致；换模型必须重建向量列与 HNSW 索引。
 - 配置只从环境变量读，唯一入口 `app/config.py`；Prompt/词表/固定话术放 `app/resources/*.yml`，原样保留、不写进 Python。缺必填变量时启动失败并报变量名，不打印值。已知配置坑（`DEEPSEEK_BASE_URL` 带 `/v1`、`PT60S` 转秒、微信变量命名）见 `docs/踩坑记录.md`。
 - `qa_log` 只允许 INSERT 和只读查询；禁止 UPDATE/DELETE 接口、后台按钮或 ORM 写方法。写入细节见 `docs/接口契约.md`。
